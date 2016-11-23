@@ -249,9 +249,8 @@ def pipeline_launchpad(job, fastqs, univ_options, tool_options):
                                 phlat_tumor_rna.rv(), univ_options, disk='100M', memory='100M',
                                 cores=1)
     spawn_mhc = job.wrapJobFn(spawn_antigen_predictors, transgene.rv(), merge_phlat.rv(),
-                              univ_options, (tool_options['mhci'],
-                                             tool_options['mhcii']), disk='100M', memory='100M',
-                              cores=1).encapsulate()
+                              univ_options, (tool_options['mhci'], tool_options['mhcii']),
+                              disk='100M', memory='100M', cores=1).encapsulate()
     merge_mhc = job.wrapJobFn(merge_mhc_peptide_calls, spawn_mhc.rv(), transgene.rv(), univ_options,
                               disk='100M', memory='100M', cores=1)
     rank_boost = job.wrapJobFn(wrap_rankboost, rsem.rv(), merge_mhc.rv(), transgene.rv(),
