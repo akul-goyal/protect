@@ -65,6 +65,7 @@ def run_star(job, fastqs, univ_options, star_options):
              +- 'rnaAligned.sortedByCoord.out.bam': Dict of genome bam + bai
                                 |- 'rna_fix_pg_sorted.bam': <JSid>
                                 +- 'rna_fix_pg_sorted.bam.bai': <JSid>
+             +- 'rnaChimeric.out.junction': <JSid>
 
     This module corresponds to node 9 on the tree
     """
@@ -85,10 +86,25 @@ def run_star(job, fastqs, univ_options, star_options):
             input_files[read_file + gz] = input_files[read_file] + gz
     # Untar the index
     input_files['star_index'] = untargz(input_files['star_index.tar.gz'], work_dir)
-    input_files = {key: docker_path(path) for key, path in input_files.items()}
+    # Check to see if user is using a STAR-Fusion index
+    star_fusion_idx = os.path.join(input_files['star_index'], 'ref_genome.fa.star.idx')
+    if os.path.exists(star_fusion_idx):
+        input_files['star_index'] = star_fusion_idx
+    input_files = {key: docker_path(path, work_dir=work_dir) for key, path in input_files.items()}
 
+    # Using recommended STAR-Fusion parameters:
+    # https://github.com/STAR-Fusion/STAR-Fusion/wiki
     parameters = ['--runThreadN', str(star_options['n']),
                   '--genomeDir', input_files['star_index'],
+                  '--twopassMode', 'Basic',
+                  '--outReadsUnmapped', 'None',
+                  '--chimSegmentMin', '12',
+                  '--chimJunctionOverhangMin', '12',
+                  '--alignSJDBoverhangMin', '10',
+                  '--alignMatesGapMax', '200000',
+                  '--alignIntronMax', '200000',
+                  '--chimSegmentReadGapMax', 'parameter', '3',
+                  '--alignSJstitchMismatchNmax', '5', '-1', '5', '5',
                   '--outFileNamePrefix', 'rna',
                   '--readFilesIn',
                   input_files['rna_cutadapt_1.fastq' + gz],
@@ -98,17 +114,18 @@ def run_star(job, fastqs, univ_options, star_options):
                   '--quantMode', 'TranscriptomeSAM']
     if gz:
         parameters.extend(['--readFilesCommand', 'zcat'])
+
     if star_options['type'] == 'star':
-        docker_call(tool='star', tool_parameters=parameters, work_dir=work_dir,
-                    dockerhub=univ_options['dockerhub'])
+        docker_call(tool='star:2.5.2b', tool_parameters=parameters, work_dir=work_dir,
+                    dockerhub='jpfeil')
     else:
         docker_call(tool='starlong', tool_parameters=parameters, work_dir=work_dir,
                     dockerhub=univ_options['dockerhub'])
     output_files = defaultdict()
     for bam_file in ['rnaAligned.toTranscriptome.out.bam',
-                     'rnaAligned.sortedByCoord.out.bam']:
-        output_files[bam_file] = job.fileStore.writeGlobalFile('/'.join([
-            work_dir, bam_file]))
+                     'rnaAligned.sortedByCoord.out.bam',
+                     'rnaChimeric.out.junction']:
+        output_files[bam_file] = job.fileStore.writeGlobalFile('/'.join([work_dir, bam_file]))
     return output_files
 
 
