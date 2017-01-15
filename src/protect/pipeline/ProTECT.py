@@ -27,8 +27,6 @@ from collections import defaultdict
 from multiprocessing import cpu_count
 from urlparse import urlparse
 
-from math import ceil
-
 from protect.addons import run_mhc_gene_assessment
 from protect.alignment.dna import align_dna
 from protect.alignment.rna import align_rna
@@ -38,7 +36,7 @@ from protect.expression_profiling.rsem import wrap_rsem
 from protect.haplotyping.phlat import merge_phlat_calls, phlat_disk, run_phlat
 from protect.mutation_annotation.snpeff import run_snpeff, snpeff_disk
 from protect.mutation_calling.common import run_mutation_aggregator
-from protect.mutation_calling.fusion import run_fusion_caller
+from protect.mutation_calling.fusion import run_star_fusion, star_fusion_disk
 from protect.mutation_calling.indel import run_indel_caller
 from protect.mutation_calling.muse import run_muse
 from protect.mutation_calling.mutect import run_mutect
@@ -120,8 +118,9 @@ def _parse_config_file(job, config_file, max_cores=None):
             tool_options[key] = parsed_config_file[key]
     # Ensure that all tools have been provided options.
     required_tools = {'cutadapt', 'bwa', 'star', 'rsem', 'phlat', 'mut_callers', 'snpeff',
-                      'transgene', 'mhci', 'mhcii', 'rank_boost', 'mhc_pathway_assessment'}
-    # TODO: Fusions and Indels
+                      'transgene', 'mhci', 'mhcii', 'rank_boost', 'mhc_pathway_assessment',
+                      'star_fusion'}
+    # TODO: Indels
     missing_tools = required_tools.difference(set(tool_options.keys()))
     if len(missing_tools) > 0:
         raise ParameterError(' The following tools have no arguments in the config file : \n' +
@@ -185,7 +184,8 @@ def pipeline_launchpad(job, fastqs, univ_options, tool_options):
     univ_options['patient'] = fastqs['patient_id']
     # Ascertin number of cpus to use per job
     tool_options['star']['n'] = tool_options['bwa']['n'] = tool_options['phlat']['n'] = \
-        tool_options['rsem']['n'] = ascertain_cpu_share(univ_options['max_cores'])
+        tool_options['rsem']['n'] = \
+        tool_options['star_fusion']['n'] = ascertain_cpu_share(univ_options['max_cores'])
     # Define the various nodes in the DAG
     # Need a logfile and a way to send it around
     sample_prep = job.wrapJobFn(prepare_samples, fastqs, univ_options, disk='40G')
@@ -198,6 +198,12 @@ def pipeline_launchpad(job, fastqs, univ_options, tool_options):
                                                       ))
     star = job.wrapJobFn(align_rna, cutadapt.rv(), univ_options, tool_options['star'],
                          cores=1, disk='100M').encapsulate()
+    star_fusion = job.wrapJobFn(run_star_fusion, cutadapt.rv(), star.rv('rnaChimeric.out.junction'),
+                                univ_options, tool_options['star'],
+                                memory='100M', cores=tool_options['star']['n'],
+                                disk=PromisedRequirement(star_fusion_disk, cutadapt.rv(),
+                                                         tool_options['star']['tool_index'])
+                                ).encapsulate()
     bwa_tumor = job.wrapJobFn(align_dna, tumor_dna_fqs.rv(), 'tumor_dna', univ_options,
                               tool_options['bwa'], cores=1, disk='100M'
                               ).encapsulate()
@@ -221,8 +227,6 @@ def pipeline_launchpad(job, fastqs, univ_options, tool_options):
     mhc_pathway_assessment = job.wrapJobFn(run_mhc_gene_assessment, rsem.rv(), phlat_tumor_rna.rv(),
                                            univ_options, tool_options['mhc_pathway_assessment'],
                                            disk='100M', memory='100M', cores=1)
-    fusions = job.wrapJobFn(run_fusion_caller, star.rv(), univ_options, 'fusion_options',
-                            disk='100M', memory='100M', cores=1)
     radia = job.wrapJobFn(run_radia, star.rv(), bwa_tumor.rv(),
                           bwa_normal.rv(), univ_options, tool_options['mut_callers'],
                           disk='100M').encapsulate()
@@ -237,8 +241,7 @@ def pipeline_launchpad(job, fastqs, univ_options, tool_options):
     indels = job.wrapJobFn(run_indel_caller, bwa_tumor.rv(), bwa_normal.rv(), univ_options,
                            'indel_options', disk='100M', memory='100M', cores=1)
     merge_mutations = job.wrapJobFn(run_mutation_aggregator,
-                                    {'fusions': fusions.rv(),
-                                     'radia': radia.rv(),
+                                    {'radia': radia.rv(),
                                      'mutect': mutect.rv(),
                                      'strelka': strelka.rv(),
                                      'indels': indels.rv(),
@@ -249,8 +252,8 @@ def pipeline_launchpad(job, fastqs, univ_options, tool_options):
     snpeff = job.wrapJobFn(run_snpeff, merge_mutations.rv(), univ_options, tool_options['snpeff'],
                            disk=PromisedRequirement(snpeff_disk,
                                                     tool_options['snpeff']['tool_index']))
-    transgene = job.wrapJobFn(run_transgene, snpeff.rv(), star.rv(), univ_options,
-                              tool_options['transgene'], disk='100M', memory='100M', cores=1)
+    transgene = job.wrapJobFn(run_transgene, snpeff.rv(), star.rv(), univ_options, tool_options['transgene'],
+                              disk='100M', memory='100M', cores=1, fusion_calls=star_fusion.rv())
     merge_phlat = job.wrapJobFn(merge_phlat_calls, phlat_tumor_dna.rv(), phlat_normal_dna.rv(),
                                 phlat_tumor_rna.rv(), univ_options, disk='100M', memory='100M',
                                 cores=1)
@@ -281,7 +284,7 @@ def pipeline_launchpad(job, fastqs, univ_options, tool_options):
     cutadapt.addChild(star)  # Edge 2->9
     # Ci.  gene expression and fusion detection follow start alignment
     star.addChild(rsem)  # Edge  9->10
-    star.addChild(fusions)  # Edge  9->11
+    star.addChild(star_fusion)
     # Cii.  Radia depends on all 3 alignments
     star.addChild(radia)  # Edge  9->12
     bwa_tumor.addChild(radia)  # Edge  3->12
@@ -310,9 +313,9 @@ def pipeline_launchpad(job, fastqs, univ_options, tool_options):
     phlat_tumor_dna.addChild(fastq_deletion_1)  # Edge 6>8
     phlat_tumor_rna.addChild(fastq_deletion_1)  # Edge 7->8
     star.addChild(fastq_deletion_2)
+    star_fusion.addChild(fastq_deletion_2)
     # F. Mutation calls need to be merged before they can be used
     # G. All mutations get aggregated when they have finished running
-    fusions.addChild(merge_mutations)  # Edge 11->18
     radia.addChild(merge_mutations)  # Edge 16->18
     mutect.addChild(merge_mutations)  # Edge 17->18
     muse.addChild(merge_mutations)  # Edge 17->18
@@ -324,6 +327,7 @@ def pipeline_launchpad(job, fastqs, univ_options, tool_options):
     # I. snpeffed mutations will be converted into peptides.
     # Transgene also accepts the RNA-seq bam and bai so that it can be rna-aware
     snpeff.addChild(transgene)  # Edge 19->20
+    star_fusion.addChild(transgene)
     star.addChild(transgene)
     # J. Merged haplotypes and peptides will be converted into jobs and submitted for mhc:peptide
     # binding prediction

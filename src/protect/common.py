@@ -99,6 +99,7 @@ def docker_call(tool, tool_parameters, work_dir, java_opts=None, outfile=None,
     dimg_rv = subprocess.check_output(call)
     existing_images = [':'.join(x.split()[0:2]) for x in dimg_rv.splitlines()
                        if x.startswith(dockerhub)]
+
     if docker_tool not in existing_images:
         try:
             call = ' '.join(['docker', 'pull', docker_tool]).split()

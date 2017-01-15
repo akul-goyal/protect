@@ -20,7 +20,7 @@ from protect.common import docker_call, get_files_from_filestore, export_results
 import os
 
 
-def run_transgene(job, snpeffed_file, rna_bam, univ_options, transgene_options):
+def run_transgene(job, snpeffed_file, rna_bam, univ_options, transgene_options, fusion_calls=None):
     """
     This module will run transgene on the input vcf file from the aggregator and produce the
     peptides for MHC prediction
@@ -60,8 +60,20 @@ def run_transgene(job, snpeffed_file, rna_bam, univ_options, transgene_options):
                   '--rna_file', input_files['rna.bam'],
                   '--prefix', 'transgened',
                   '--pep_lens', '9,10,15']
-    docker_call(tool='transgene', tool_parameters=parameters, work_dir=work_dir,
-                dockerhub=univ_options['dockerhub'])
+
+    if fusion_calls:
+        fusion_files = {'fusion_calls': fusion_calls,
+                        'transcripts.fa.tar.gz': transgene_options['gencode_transcript_fasta']}
+        fusion_files = get_files_from_filestore(job, fusion_files, work_dir, docker=False)
+        fusion_files['transcripts.fa'] = untargz(fusion_files['transcripts.fa.tar.gz'], work_dir)
+        fusion_files = {key: docker_path(path) for key, path in fusion_files.items()}
+        parameters += ['--transcripts', fusion_files['transcripts.fa'],
+                       '--fusions', fusion_files['fusion_calls']]
+
+    docker_call(tool='transgene:latest',
+                tool_parameters=parameters, work_dir=work_dir,
+                dockerhub='jpfeil')
+
     output_files = defaultdict()
     for peplen in ['9', '10', '15']:
         peptfile = '_'.join(['transgened_tumor', peplen, 'mer_snpeffed.faa'])

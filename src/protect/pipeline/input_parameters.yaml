@@ -82,6 +82,9 @@ snpeff:
     tool_index : S3://cgl-protect-data/hg19_references/snpeff_index.tar.gz
     java_Xmx : 20G
 
+star_fusion:
+    tool_index: S3://cgl-protect-data/hg19_references/GRCh37_gencode_v19_CTAT_lib_July272016_ready.tar.gz
+
 transgene:
     gencode_peptide_fasta : S3://cgl-protect-data/hg19_references/gencode.v19.pc_translations_NOPARY.fa.tar.gz
 

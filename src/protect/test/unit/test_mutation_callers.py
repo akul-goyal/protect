@@ -23,10 +23,12 @@ from protect.common import untargz
 from protect.mutation_calling.muse import run_muse
 from protect.mutation_calling.mutect import run_mutect
 from protect.mutation_calling.radia import run_radia
+from protect.mutation_calling.fusion import run_star_fusion
 from protect.mutation_calling.somaticsniper import run_somaticsniper
 from protect.mutation_calling.strelka import run_strelka
 from protect.pipeline.ProTECT import _parse_config_file
 from protect.test import ProtectTest
+
 from toil.job import Job
 
 import os
@@ -73,6 +75,29 @@ class TestMutationCallers(ProtectTest):
         b1.addChild(b2)
         b2.addChild(c)
         Job.Runner.startToil(a1, self.options)
+
+
+    def test_star_fusion(self):
+        """
+        Test the functionality of STAR-Fusion pipeline
+        """
+        univ_options = self._getTestUnivOptions()
+        a = Job.wrapJobFn(self._get_test_fusion_reads)
+        b = Job.wrapJobFn(self._get_star_fusion_options).encapsulate()
+        c = Job.wrapJobFn(run_star_fusion, a.rv(),  univ_options, b.rv()).encapsulate()
+        a.addChild(b)
+        b.addChild(c)
+        Job.Runner.startToil(a, self.options)
+
+    @staticmethod
+    def _get_star_fusion_options(job):
+        star_fusion_options = {}
+        call = 's3am download S3://pimmuno-test-data/CI_test_input/GRCh37_chr17_chr20_v19_CTAT_lib_ready.tar.gz ./index.tar.gz'
+        subprocess.check_call(call.split(' '))
+        star_fusion_options['tool_index'] = job.fileStore.writeGlobalFile('index.tar.gz')
+        star_fusion_options['n'] = 2
+        return star_fusion_options
+
 
     @unittest.skip('Takes too long')
     def test_radia(self):
@@ -147,7 +172,26 @@ class TestMutationCallers(ProtectTest):
                                                             '.bai')}}
 
 
+    @staticmethod
+    def _get_test_fusion_reads(job):
+        """
+        Get the test fusion reads from s3
+
+        :return: FSID for each paired FASTQ
+        """
+        base_call = 's3am download s3://pimmuno-test-data/CI_test_input/'
+        samples = ['star_fusion_test_1.fq.gz', 'star_fusion_test_2.fq.gz']
+        for sample in samples:
+            call = '{base}{sample} ./{sample}'.format(base=base_call, sample=sample)
+            subprocess.check_call(call.split(' '))
+        r1 = job.fileStore.writeGlobalFile('star_fusion_test_1.fq.gz')
+        r2 = job.fileStore.writeGlobalFile('star_fusion_test_2.fq.gz')
+        return r1, r2
+
+
 _get_all_tools = TestMutationCallers._get_all_tools
 _get_tool = TestMutationCallers._get_tool
 _get_test_dna_alignments = TestMutationCallers._get_test_dna_alignments
 _get_test_rna_alignments = TestMutationCallers._get_test_rna_alignments
+_get_star_fusion_options = TestMutationCallers._get_star_fusion_options
+_get_test_fusion_reads = TestMutationCallers._get_test_fusion_reads

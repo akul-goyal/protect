@@ -278,8 +278,7 @@ def print_mhc_peptide(neoepitope_info, peptides, pepmap, outfile):
     peptide_names = [x for x, y in peptides.items() if pept in y]
     # For each peptide, append the ensembl gene
     for peptide_name in peptide_names:
-        print(allele, pept, peptide_name, core, '0', pred, pepmap[peptide_name], sep='\t',
-              file=outfile)
+        print(allele, pept, peptide_name, core, '0', pred, pepmap[peptide_name], sep='\t', file=outfile)
     return None
 
 

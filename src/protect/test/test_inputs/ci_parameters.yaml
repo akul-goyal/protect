@@ -74,12 +74,16 @@ mut_callers:
     java_Xmx : 2G
     strelka_config: S3://cgl-protect-data/hg19_references/strelka_bwa_WXS_config.ini.tar.gz
 
+star_fusion:
+    tool_index: S3://cgl-protect-data/ci_references/GRCh37_chr6_v19_CTAT_lib_ready.tar.gz
+
 snpeff:
     tool_index : S3://cgl-protect-data/ci_references/snpeff_index_chr6.tar.gz
     java_Xmx : 20G
 
 transgene:
     gencode_peptide_fasta : S3://cgl-protect-data/ci_references/gencode.v19.pc_translations.chr6.fa.tar.gz
+    gencode_transcript_fasta : S3://cgl-protect-data/ci_references/gencode.v19.pc_transcripts.chr6.fa.tar.gz
 
 phlat:
     tool_index : S3://cgl-protect-data/hg19_references/phlat_index.tar.gz
