@@ -117,9 +117,8 @@ def _parse_config_file(job, config_file, max_cores=None):
         else:
             tool_options[key] = parsed_config_file[key]
     # Ensure that all tools have been provided options.
-    required_tools = {'cutadapt', 'bwa', 'star', 'rsem', 'phlat', 'mut_callers', 'snpeff',
-                      'transgene', 'mhci', 'mhcii', 'rank_boost', 'mhc_pathway_assessment',
-                      'star_fusion'}
+    required_tools = {'cutadapt', 'bwa', 'rsem', 'phlat', 'mut_callers', 'snpeff', 'star_fusion',
+                      'transgene', 'mhci', 'mhcii', 'rank_boost', 'mhc_pathway_assessment'}
     # TODO: Indels
     missing_tools = required_tools.difference(set(tool_options.keys()))
     if len(missing_tools) > 0:
@@ -186,6 +185,11 @@ def pipeline_launchpad(job, fastqs, univ_options, tool_options):
     tool_options['star']['n'] = tool_options['bwa']['n'] = tool_options['phlat']['n'] = \
         tool_options['rsem']['n'] = \
         tool_options['star_fusion']['n'] = ascertain_cpu_share(univ_options['max_cores'])
+
+    # If a separate STAR index is not provided, use the STAR-Fusion index
+    if 'tool_index' not in tool_options['star']:
+        tool_options['star'] = tool_options['star_fusion']
+
     # Define the various nodes in the DAG
     # Need a logfile and a way to send it around
     sample_prep = job.wrapJobFn(prepare_samples, fastqs, univ_options, disk='40G')
@@ -194,15 +198,14 @@ def pipeline_launchpad(job, fastqs, univ_options, tool_options):
     tumor_rna_fqs = job.wrapJobFn(get_fqs, sample_prep.rv(), 'tumor_rna', disk='10M')
     cutadapt = job.wrapJobFn(run_cutadapt, tumor_rna_fqs.rv(), univ_options,
                              tool_options['cutadapt'], cores=1,
-                             disk=PromisedRequirement(cutadapt_disk, tumor_rna_fqs.rv()
-                                                      ))
+                             disk=PromisedRequirement(cutadapt_disk, tumor_rna_fqs.rv()))
     star = job.wrapJobFn(align_rna, cutadapt.rv(), univ_options, tool_options['star'],
                          cores=1, disk='100M').encapsulate()
     star_fusion = job.wrapJobFn(run_star_fusion, cutadapt.rv(), star.rv('rnaChimeric.out.junction'),
-                                univ_options, tool_options['star'],
-                                memory='100M', cores=tool_options['star']['n'],
+                                univ_options, tool_options['star_fusion'],
+                                memory='100M', cores=tool_options['star_fusion']['n'],
                                 disk=PromisedRequirement(star_fusion_disk, cutadapt.rv(),
-                                                         tool_options['star']['tool_index'])
+                                                         tool_options['star_fusion']['tool_index'])
                                 ).encapsulate()
     bwa_tumor = job.wrapJobFn(align_dna, tumor_dna_fqs.rv(), 'tumor_dna', univ_options,
                               tool_options['bwa'], cores=1, disk='100M'

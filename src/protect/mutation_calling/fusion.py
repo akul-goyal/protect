@@ -215,9 +215,9 @@ def split_fusion_transcript(annotation_path, transcripts):
                 fusion, start_stop = fusion.split(':')
                 left_break, right_break = start_stop.split('-')
 
-                annotation[fusion]['ID'] = eyd
-                annotation[fusion]['left_break'] = left_break
-                annotation[fusion]['right_break'] = right_break
+                annotation[fusion][eyd] = {}
+                annotation[fusion][eyd]['left_break'] = left_break
+                annotation[fusion][eyd]['right_break'] = right_break
 
             else:
                 line = line.strip().split('\t')
@@ -226,23 +226,21 @@ def split_fusion_transcript(annotation_path, transcripts):
                 block_start = line[3]
                 block_stop = line[4]
                 attr = line[8]
+                m = regex.search(attr)
+                if m:
+                    transcript_id = m.group('Name')
 
-                if strand == '-' and block_start == annotation[fusion]['right_break']:
-                    m = regex.search(attr)
-                    if m:
-                        transcript_id = m.group('Name')
-                        transcript_split = int(m.group('stop'))
-
+                    if strand == '-' and any([block_start == annotation[fusion][transcript_id]['right_break'],
+                                              block_stop == annotation[fusion][transcript_id]['right_break']]):
+                        transcript_split = int(m.group('stop')) + 1   # Off by one
                         # Take the reverse complement to orient transcripts from 5' to 3'
                         five_seq = transcripts[transcript_id][transcript_split:].translate(trans)[::-1]
                         five_pr_splits[fusion][transcript_id] = five_seq
                         three_seq = transcripts[transcript_id][:transcript_split].translate(trans)[::-1]
                         three_pr_splits[fusion][transcript_id] = three_seq
 
-                if strand == '+' and block_stop == annotation[fusion]['left_break']:
-                    m = regex.search(attr)
-                    if m:
-                        transcript_id = m.group('Name')
+                    elif strand == '+' and any([block_start == annotation[fusion][transcript_id]['left_break'],
+                                                block_stop == annotation[fusion][transcript_id]['left_break']]):
                         transcript_split = int(m.group('stop'))
                         five_pr_splits[fusion][transcript_id] = transcripts[transcript_id][:transcript_split]
                         three_pr_splits[fusion][transcript_id] = transcripts[transcript_id][transcript_split:]
