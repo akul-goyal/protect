@@ -68,7 +68,7 @@ def run_star_fusion(job, fastqs, junction_file, univ_options, star_fusion_option
 
     cores = star_fusion_options['n']
     parameters = ['--chimeric_junction', 'STAR.junction',
-                  '--output_dir', 'output',
+                  '--output_dir', os.path.join(work_dir, 'output'),
                   '--genome_lib_dir', input_files['tool_index'],
                   '--CPU', str(cores)]
 
