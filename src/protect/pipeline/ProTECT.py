@@ -117,7 +117,7 @@ def _parse_config_file(job, config_file, max_cores=None):
         else:
             tool_options[key] = parsed_config_file[key]
     # Ensure that all tools have been provided options.
-    required_tools = {'cutadapt', 'bwa', 'rsem', 'phlat', 'mut_callers', 'snpeff', 'star_fusion',
+    required_tools = {'cutadapt', 'bwa', 'rsem', 'phlat', 'mut_callers', 'snpeff', 'star', 'star_fusion',
                       'transgene', 'mhci', 'mhcii', 'rank_boost', 'mhc_pathway_assessment'}
     # TODO: Indels
     missing_tools = required_tools.difference(set(tool_options.keys()))
