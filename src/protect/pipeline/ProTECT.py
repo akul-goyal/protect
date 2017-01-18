@@ -188,7 +188,7 @@ def pipeline_launchpad(job, fastqs, univ_options, tool_options):
 
     # If a separate STAR index is not provided, use the STAR-Fusion index
     if 'tool_index' not in tool_options['star']:
-        tool_options['star'] = tool_options['star_fusion']
+        tool_options['star']['tool_index'] = tool_options['star_fusion']['tool_index']
 
     # Define the various nodes in the DAG
     # Need a logfile and a way to send it around
