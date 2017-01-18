@@ -93,7 +93,7 @@ def run_star_fusion(job, fastqs, junction_file, univ_options, star_fusion_option
                   '--out_prefix', 'FusionInspector',
                   '--prep_for_IGV',
                   '--include_Trinity',
-                  '--CPU', cores]
+                  '--CPU', str(cores)]
 
     docker_call(tool='fusion-inspector:protect', tool_parameters=parameters, work_dir=work_dir, dockerhub='jpfeil')
 
