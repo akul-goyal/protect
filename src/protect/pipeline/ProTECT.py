@@ -199,8 +199,10 @@ def pipeline_launchpad(job, fastqs, univ_options, tool_options):
     cutadapt = job.wrapJobFn(run_cutadapt, tumor_rna_fqs.rv(), univ_options,
                              tool_options['cutadapt'], cores=1,
                              disk=PromisedRequirement(cutadapt_disk, tumor_rna_fqs.rv()))
+
     star = job.wrapJobFn(align_rna, cutadapt.rv(), univ_options, tool_options['star'],
                          cores=1, disk='100M').encapsulate()
+
     star_fusion = job.wrapJobFn(run_star_fusion, cutadapt.rv(), star.rv('rnaChimeric.out.junction'),
                                 univ_options, tool_options['star_fusion'],
                                 memory='100M', cores=tool_options['star_fusion']['n'],

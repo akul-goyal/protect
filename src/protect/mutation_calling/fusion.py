@@ -15,6 +15,7 @@
 from __future__ import print_function
 import collections
 import csv
+import logging
 from math import ceil
 import os
 import re
@@ -60,23 +61,30 @@ def run_star_fusion(job, fastqs, junction_file, univ_options, star_fusion_option
     work_dir = job.fileStore.getLocalTempDir()
     input_files = {'rna_1.fq.gz': fastqs[0],
                    'rna_2.fq.gz': fastqs[1],
-                   'STAR.junction': junction_file,
                    'tool_index.tar.gz': star_fusion_options['tool_index']}
+
+    parameters = []
+
+    # If there isn't a junction file, then we can run STAR-Fusion from the fastq files
+    if junction_file is not None:
+        input_files['STAR.junction'] = junction_file
+        parameters.extend(['--chimeric_junction', 'STAR.junction'])
+    else:
+        parameters.extend(['--left_fq', 'rna_1.fq.gz', '--right_fq', 'rna_2.fq.gz'])
 
     input_files = get_files_from_filestore(job, input_files, work_dir, docker=False)
     input_files['tool_index'] = os.path.basename(untargz(input_files['tool_index.tar.gz'], work_dir))
 
     cores = star_fusion_options['n']
-    parameters = ['--chimeric_junction', 'STAR.junction',
-                  '--output_dir', os.path.join(work_dir, 'output'),
-                  '--genome_lib_dir', input_files['tool_index'],
-                  '--CPU', str(cores)]
+    parameters.extend(['--output_dir', '/data/fusion-output',    # Docker container mounts work_dir at /data
+                       '--genome_lib_dir', input_files['tool_index'],
+                       '--CPU', str(cores)])
 
     docker_call(tool='star-fusion:protect', tool_parameters=parameters, work_dir=work_dir, dockerhub='jpfeil')
 
-    job.fileStore.logToMaster('\n'.join(os.listdir(os.path.join(work_dir, 'output'))))
+    job.fileStore.logToMaster('\n'.join(os.listdir(os.path.join(work_dir, 'fusion-output'))))
 
-    fusion_path = os.path.join(work_dir, 'output/star-fusion.fusion_candidates.final.abridged')
+    fusion_path = os.path.join(work_dir, 'fusion-output/star-fusion.fusion_candidates.final.abridged')
 
     # Check for fusion prediction
     with open(fusion_path, 'r') as f:
@@ -85,15 +93,15 @@ def run_star_fusion(job, fastqs, junction_file, univ_options, star_fusion_option
         try:
             f.next()
         except StopIteration:
+            logging.warning('%s: Did not identify any fusions!' % univ_options['patient'])
             return
 
-    parameters = ['--fusions', fusion_path,
+    parameters = ['--fusions', '/data/fusion-output/star-fusion.fusion_candidates.final.abridged',
                   '--genome_lib', input_files['tool_index'],
                   '--left_fq', 'rna_1.fq.gz',
                   '--right_fq', 'rna_2.fq.gz',
-                  '--out_dir', 'FusionInspector',
+                  '--out_dir', '/data/FusionInspector',
                   '--out_prefix', 'FusionInspector',
-                  '--prep_for_IGV',
                   '--include_Trinity',
                   '--CPU', str(cores)]
 
@@ -204,10 +212,6 @@ def split_fusion_transcript(annotation_path, transcripts):
     three_pr_splits = collections.defaultdict(dict)
 
     regex = re.compile(r'ID=(?P<ID>.*);Name=(?P<Name>.*);Target=(?P<Target>.*)\s(?P<start>\d+)\s(?P<stop>\d+)')
-
-    # print('SLEEPING')
-    # import time
-    # time.sleep(1800)
 
     with open(annotation_path, 'r') as gff:
         for line in gff:

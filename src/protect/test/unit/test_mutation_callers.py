@@ -84,7 +84,7 @@ class TestMutationCallers(ProtectTest):
         univ_options = self._getTestUnivOptions()
         a = Job.wrapJobFn(self._get_test_fusion_reads)
         b = Job.wrapJobFn(self._get_star_fusion_options).encapsulate()
-        c = Job.wrapJobFn(run_star_fusion, a.rv(),  univ_options, b.rv()).encapsulate()
+        c = Job.wrapJobFn(run_star_fusion, a.rv(),  None, univ_options, b.rv()).encapsulate()
         a.addChild(b)
         b.addChild(c)
         Job.Runner.startToil(a, self.options)
