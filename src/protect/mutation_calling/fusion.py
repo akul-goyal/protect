@@ -82,8 +82,6 @@ def run_star_fusion(job, fastqs, junction_file, univ_options, star_fusion_option
 
     docker_call(tool='star-fusion:protect', tool_parameters=parameters, work_dir=work_dir, dockerhub='jpfeil')
 
-    job.fileStore.logToMaster('\n'.join(os.listdir(os.path.join(work_dir, 'fusion-output'))))
-
     fusion_path = os.path.join(work_dir, 'fusion-output/star-fusion.fusion_candidates.final.abridged')
 
     # Check for fusion prediction
