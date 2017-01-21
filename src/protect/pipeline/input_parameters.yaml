@@ -86,6 +86,7 @@ star_fusion:
 
 transgene:
     gencode_peptide_fasta : S3://cgl-protect-data/hg19_references/gencode.v19.pc_translations_NOPARY.fa.tar.gz
+    gencode_transcript_fasta : S3://cgl-protect-data/hg19_references/gencode.v19.pc_transcripts.fa.tar.gz
 
 phlat:
     tool_index : S3://cgl-protect-data/hg19_references/phlat_index.tar.gz
