@@ -106,6 +106,7 @@ def run_star(job, fastqs, univ_options, star_options):
                   '--chimSegmentReadGapMax', 'parameter', '3',
                   '--alignSJstitchMismatchNmax', '5', '-1', '5', '5',
                   '--outFileNamePrefix', 'rna',
+                  '--limitBAMsortRAM', '31532137230',
                   '--readFilesIn',
                   input_files['rna_cutadapt_1.fastq' + gz],
                   input_files['rna_cutadapt_2.fastq' + gz],
