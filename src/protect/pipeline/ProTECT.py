@@ -248,7 +248,6 @@ def pipeline_launchpad(job, fastqs, univ_options, tool_options):
     merge_mutations = job.wrapJobFn(run_mutation_aggregator,
                                     {'radia': radia.rv(),
                                      'mutect': mutect.rv(),
-                                     'strelka': strelka.rv(),
                                      'indels': indels.rv(),
                                      'muse': muse.rv(),
                                      'somaticsniper': somaticsniper.rv()}, univ_options,
@@ -301,8 +300,8 @@ def pipeline_launchpad(job, fastqs, univ_options, tool_options):
     bwa_normal.addChild(muse)  # Edge  4->13
     bwa_tumor.addChild(somaticsniper)  # Edge  3->13
     bwa_normal.addChild(somaticsniper)  # Edge  4->13
-    bwa_tumor.addChild(strelka)  # Edge  3->13
-    bwa_normal.addChild(strelka)  # Edge  4->13
+#    bwa_tumor.addChild(strelka)  # Edge  3->13
+#    bwa_normal.addChild(strelka)  # Edge  4->13
     bwa_tumor.addChild(indels)  # Edge  3->14
     bwa_normal.addChild(indels)  # Edge  4->14
     # D. MHC haplotypes will be merged once all 3 samples have been PHLAT-ed
@@ -325,7 +324,7 @@ def pipeline_launchpad(job, fastqs, univ_options, tool_options):
     mutect.addChild(merge_mutations)  # Edge 17->18
     muse.addChild(merge_mutations)  # Edge 17->18
     somaticsniper.addChild(merge_mutations)  # Edge 17->18
-    strelka.addChild(merge_mutations)  # Edge 17->18
+   #  strelka.addChild(merge_mutations)  # Edge 17->18
     indels.addChild(merge_mutations)  # Edge 14->18
     # H. Aggregated mutations will be translated to protein space
     merge_mutations.addChild(snpeff)  # Edge 18->19

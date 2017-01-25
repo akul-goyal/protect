@@ -111,6 +111,7 @@ def run_star(job, fastqs, univ_options, star_options):
                   input_files['rna_cutadapt_1.fastq' + gz],
                   input_files['rna_cutadapt_2.fastq' + gz],
                   '--outSAMattributes', 'NH', 'HI', 'AS', 'NM', 'MD',
+                  '--limitBAMsortRAM', '30656224789',
                   '--outSAMtype', 'BAM', 'SortedByCoordinate',
                   '--quantMode', 'TranscriptomeSAM']
     if gz:
