@@ -323,8 +323,10 @@ def reformat_star_fusion_output(job, fusion_annot, fusion_file, transcript_file,
             name = '-'.join([hugo_to_gene_ids[record.LeftGene], hugo_to_gene_ids[record.RightGene]])
 
             # Add empty sequences in case Trinity doesn't output one
-            five_pr_splits[fusion]['N/A'] = '.'
-            three_pr_splits[fusion]['N/A'] = '.'
+            if len(five_pr_splits[fusion].keys()) == 0:
+                five_pr_splits[fusion]['N/A'] = '.'
+            if len(three_pr_splits[fusion].keys()) == 0:
+                three_pr_splits[fusion]['N/A'] = '.'
 
             for transcript_id in five_pr_splits[fusion].keys():
                 five_prime_seq = five_pr_splits[fusion][transcript_id]
