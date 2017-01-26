@@ -83,6 +83,8 @@ snpeff:
 transgene:
     gencode_peptide_fasta : S3://cgl-protect-data/ci_references/gencode.v19.pc_translations.chr6.fa.tar.gz
     gencode_transcript_fasta : S3://cgl-protect-data/ci_references/gencode.v19.pc_transcripts.chr6.fa.tar.gz
+    genome_fasta : S3://cgl-protect-data/ci_references/chr6.fa.tar.gz
+    gencode_annotation_gtf : S3://cgl-protect-data/ci_references/gencode.v19.chr6.annotation.gtf.tar.gz
 
 phlat:
     tool_index : S3://cgl-protect-data/hg19_references/phlat_index.tar.gz
