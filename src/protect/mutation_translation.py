@@ -69,6 +69,8 @@ def run_transgene(job, snpeffed_file, rna_bam, univ_options, transgene_options, 
 
         fusion_files = get_files_from_filestore(job, fusion_files, work_dir, docker=False)
         fusion_files['transcripts.fa'] = untargz(fusion_files['transcripts.fa.tar.gz'], work_dir)
+        fusion_files['genome.fa'] = untargz(fusion_files['genome.fa.tar.gz'], work_dir)
+        fusion_files['annotation.gtf'] = untargz(fusion_files['annotation.gtf.tar.gz'], work_dir)
         fusion_files = {key: docker_path(path) for key, path in fusion_files.items()}
         parameters += ['--transcripts', fusion_files['transcripts.fa'],
                        '--fusions', fusion_files['fusion_calls'],
