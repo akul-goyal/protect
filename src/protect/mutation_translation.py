@@ -63,12 +63,17 @@ def run_transgene(job, snpeffed_file, rna_bam, univ_options, transgene_options, 
 
     if fusion_calls:
         fusion_files = {'fusion_calls': fusion_calls,
-                        'transcripts.fa.tar.gz': transgene_options['gencode_transcript_fasta']}
+                        'transcripts.fa.tar.gz': transgene_options['gencode_transcript_fasta'],
+                        'annotation.gtf.tar.gz': transgene_options['gencode_annotation_gtf'],
+                        'genome.fa.tar.gz': transgene_options['genome_fasta']}
+
         fusion_files = get_files_from_filestore(job, fusion_files, work_dir, docker=False)
         fusion_files['transcripts.fa'] = untargz(fusion_files['transcripts.fa.tar.gz'], work_dir)
         fusion_files = {key: docker_path(path) for key, path in fusion_files.items()}
         parameters += ['--transcripts', fusion_files['transcripts.fa'],
-                       '--fusions', fusion_files['fusion_calls']]
+                       '--fusions', fusion_files['fusion_calls'],
+                       '--genome', fusion_files['genome.fa'],
+                       '--annotation', fusion_files['annotation.gtf']]
 
     docker_call(tool='transgene:latest',
                 tool_parameters=parameters, work_dir=work_dir,
